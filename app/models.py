@@ -25,6 +25,7 @@ class User(SQLModel,table = True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     email: str
+    password: str #hash da senha 
     picture_profile: Optional[str] = Field(default="static/defaults/user.jpg") ## preciso mudar, para colocar a pasta especifica 
     events_created: List["Event"] = Relationship(back_populates="creator") ## toda vez q associar um evento a um usuário colocar o evento aqui
     # Quem este usuário está seguindo (Lista de outros usuários)

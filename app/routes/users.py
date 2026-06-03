@@ -4,11 +4,9 @@ import os
 import shutil
 
 from app.database import get_session
-from app.models import User
-
-# Importando a função de autenticação que precisa ser criada no auth.py. Vou deixar aqui até vc implementar. Se fizer com outro nome, me avisa q eu importo com nome diferente
-# O FastAPI vai rodar essa função antes de entrar na rota para garantir que o usuário está logado
-from app.auth import get_current_user 
+from app.models import User, Follower
+from app.security import get_actual_user 
+from app.schemas import UserUpdateSchema, UserResponseSchema
 
 router = APIRouter(
     prefix="/usuarios",
@@ -18,17 +16,17 @@ router = APIRouter(
 ### --- ROTAS DO PRÓPRIO USUÁRIO LOGADO (/me) --- ###
 
 # Visualizar Meu Perfil 
-@router.get("/me", response_model=User)
-def get_my_profile(current_user: User = Depends(get_current_user)):
+@router.get("/me", response_model=UserResponseSchema)
+def get_my_profile(current_user: User = Depends(get_actual_user)):
     return current_user
 
 # Editar Meu Perfil
-@router.patch("/me", response_model=User)
-def update_profile(user_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+@router.patch("/me", response_model=UserResponseSchema)
+def update_profile(user_data: UserUpdateSchema, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     # Atualiza apenas os campos enviados no JSON
     for key, value in user_data.items():
         # Não deixa o usuário alterar ID, email ou senha por aqui. Vou deixar emaill e senha pra ser auterado na autentificação tb
-        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email"]:
+        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email, role"]:
             setattr(current_user, key, value)
             
     session.add(current_user)
@@ -39,44 +37,42 @@ def update_profile(user_data: dict, current_user: User = Depends(get_current_use
 
 # Excluir Conta (Desativar meu perfil)
 @router.delete("/me", status_code=status.HTTP_200_OK)
-def delete_my_profile(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    # Assumindo que que vc vai colocar um campo 'is_active' no models.py dps. Se vc tem outros planos pra como fazer, me manda msg
-    current_user.is_active = False 
-    session.add(current_user)
+def delete_my_profile(current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
+    session.delete(current_user)
     session.commit()
     
-    return {"mensagem": "Conta desativada com sucesso.", "usuario_id": current_user.id, "ativo": False}
+    return {"mensagem": "Conta excluída permanentemente.", "usuario_id": current_user.id}
 
 # Upload da Minha Foto de Perfil
 @router.post("/me/foto", status_code=status.HTTP_200_OK)
 async def upload_user_photo(
     file: UploadFile = File(...), 
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_actual_user),
     session: Session = Depends(get_session)
 ):
-    upload_dir = "uploads/usuarios"
+    upload_dir = "app/static/defaults"
     os.makedirs(upload_dir, exist_ok=True)
-    
-    file_path = f"{upload_dir}/{current_user.id}_{file.filename}"
+    file_name = f"user_{current_user.id}_{file.filename}"
+    file_path = f"{upload_dir}/{file_name}"
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    avatar_url = f"https://api.eventusp.com/{file_path}"
+    db_path = f"static/defaults/{file_name}"
     
     # Atualiza o model com a nova foto
-    current_user.foto_perfil = avatar_url
+    current_user.foto_perfil = db_path
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
     
-    return {"mensagem": "Foto atualizada com sucesso.", "avatar_url": avatar_url}
+    return {"mensagem": "Foto atualizada com sucesso.", "picture_profile": db_path}
 
 
 ### --- ROTAS DE INTERAÇÃO COM TERCEIROS (/{id}) --- ###
 
 # Visualizar Perfil de Outro Usuário
-@router.get("/{user_id}", response_model=User)
+@router.get("/{user_id}", response_model=UserResponseSchema)
 def get_user_profile(user_id: int, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
     if not user:
@@ -85,34 +81,32 @@ def get_user_profile(user_id: int, session: Session = Depends(get_session)):
 
 # Seguir Usuário
 @router.post("/{id_following}/seguir", status_code=status.HTTP_200_OK)
-def follow_user(id_following: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def follow_user(id_following: int, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     if current_user.id == id_following:
         raise HTTPException(status_code=400, detail="Você não pode seguir a si mesmo.")
         
-    # Quando criar o modelo Follower, vou descomente as linhas abaixo
-    # # Verifica se já segue para não duplicar
-    # stmt = select(Follower).where(Follower.id_follower == current_user.id, Follower.id_following == id_following)
-    # db_follow = session.exec(stmt).first()
-    # if db_follow:
-    #     return {"mensagem": "Você já segue este usuário."}
+    # Verifica se já segue para não duplicar
+    stmt = select(Follower).where(Follower.id_follower == current_user.id, Follower.id_following == id_following)
+    db_follow = session.exec(stmt).first()
+    if db_follow:
+        return {"mensagem": "Você já segue este usuário."}
         
-    # new_follow = Follower(id_follower=current_user.id, id_following=id_following)
-    # session.add(new_follow)
-    # session.commit()
+    new_follow = Follower(id_follower=current_user.id, id_following=id_following)
+    session.add(new_follow)
+    session.commit()
     
     return {"mensagem": f"Você começou a seguir o usuário {id_following}", "seguindo_id": id_following}
 
 # Deixar de Seguir
 @router.delete("/{id_following}/seguir", status_code=status.HTTP_200_OK)
-def unfollow_user(id_following: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    # Quando criar o modelo Follower, vou descomente as linhas abaixo
-    # stmt = select(Follower).where(Follower.id_follower == current_user.id, Follower.id_following == id_following)
-    # db_follow = session.exec(stmt).first()
-    # if not db_follow:
-    #     raise HTTPException(status_code=404, detail="Você não segue este usuário.")
+def unfollow_user(id_following: int, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
+    stmt = select(Follower).where(Follower.id_follower == current_user.id, Follower.id_following == id_following)
+    db_follow = session.exec(stmt).first()
+    if not db_follow:
+        raise HTTPException(status_code=404, detail="Você não segue este usuário.")
         
-    # session.delete(db_follow)
-    # session.commit()
+    session.delete(db_follow)
+    session.commit()
     return {"mensagem": f"Você deixou de seguir o usuário {id_following}", "seguindo_id": id_following}
   
 ### ATENÇÃO LEO! QUANDO FOR MECHER AQUI SIGA O MEDELO QUE ESTÁ NO AUTH.PY PARA PADRONIZAR O PROJETO

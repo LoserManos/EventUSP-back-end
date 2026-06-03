@@ -5,9 +5,9 @@ import os
 import shutil
 
 from app.database import get_session
-#Aqui to importando os models q vc vai criar. Além disso, tb estou importando o get_current_user
-from app.models import Event, User
-from app.auth import get_current_user
+from app.schemas import EventCreateSchema, EventUpdateSchema, EventResponseSchema, CommentCreateSchema
+from app.models import Event, User, Likes, Interests, Follower, Comment
+from app.security import get_actual_user
 
 router = APIRouter(
     prefix="/eventos",
@@ -18,14 +18,14 @@ router = APIRouter(
 
 # Criar Novo Evento
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_event(event_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def create_event(event_data: EventCreateSchema, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     # O organizador é automaticamente o usuário logado
-    # new_event = Event(**event_data, user_id=current_user.id)
-    # session.add(new_event)
-    # session.commit()
-    # session.refresh(new_event)
+    new_event = Event(**event_data.model_dump(), user_id=current_user.id)
+    session.add(new_event)
+    session.commit()
+    session.refresh(new_event)
     
-    return {"mensagem": "Evento criado com sucesso!"}
+    return {"mensagem": "Evento criado com sucesso!", "evento_id": new_event.id}
 
 # Listar Eventos (Feed Geral)
 @router.get("/", status_code=status.HTTP_200_OK)
@@ -33,7 +33,7 @@ def list_events(
     pagina: int = Query(1, ge=1), 
     limite: int = Query(20, ge=1, le=100),
     busca: Optional[str] = None,
-    tag: Optional[str] = None,
+    category_id: Optional[str] = None,
     session: Session = Depends(get_session)
 ):
     offset = (pagina - 1) * limite
@@ -41,9 +41,8 @@ def list_events(
     
     if busca:
         query = query.where(Event.title.contains(busca))
-    if tag:
-        # Assumindo uma coluna ou tabela de tags futuramente
-        pass
+    if category_id:
+        query = query.where(Event.category_id == category_id)
         
     total_eventos = len(session.exec(query).all())
     eventos = session.exec(query.offset(offset).limit(limite)).all()
@@ -57,16 +56,18 @@ def list_events(
 # Listar Eventos de Quem Você Segue (Feed Personalizado)
 @router.get("/seguindo", status_code=status.HTTP_200_OK)
 def list_following_events(
-    pagina: int = 1, limite: int = 20, 
-    current_user: User = Depends(get_current_user), 
+    pagina: int = Query(1, ge=1), 
+    limite: int = Query(20, ge=1, le=100), 
+    current_user: User = Depends(get_actual_user), 
     session: Session = Depends(get_session)
 ):
     offset = (pagina - 1) * limite
-    # stmt_seguindo = select(Follower.id_following).where(Follower.id_follower == current_user.id)
-    # query = select(Event).where(Event.user_id.in_(stmt_seguindo))
-    # eventos = session.exec(query.offset(offset).limit(limite)).all()
+    
+    stmt_seguindo = select(Follower.id_following).where(Follower.id_follower == current_user.id)
+    query = select(Event).where(Event.user_id.in_(stmt_seguindo))
+    eventos = session.exec(query.offset(offset).limit(limite)).all()
 
-    return [{"pagina_atual": pagina, "dados": []}]
+    return {"pagina_atual": pagina, "dados": eventos}
 
 
 ### --- 2. DETALHES, EDIÇÃO E DELEÇÃO --- ###
@@ -74,27 +75,24 @@ def list_following_events(
 # Ver Detalhes do Evento
 @router.get("/{evento_id}", status_code=status.HTTP_200_OK)
 def get_event_details(evento_id: int, session: Session = Depends(get_session)):
-    # event = session.get(Event, evento_id)
-    # if not event:
-    #     raise HTTPException(status_code=404, detail="Evento não encontrado.")
+    event = session.get(Event, evento_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado.")
     
-    # Aqui o retorno vai compilar os dados do evento + arrays de fotos e comentários
-    return {"id": evento_id, "titulo": "Detalhes em construção", "fotos": [], "comentarios": []}
+    return event
 
 # Editar Evento
 @router.patch("/{evento_id}", status_code=status.HTTP_200_OK)
-def update_event(evento_id: int, event_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def update_event(evento_id: int, event_data: EventUpdateSchema, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado.")
         
-    # Validação  de segurança para não deixar um cara que não é o dono editar
     if event.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para editar este evento.")
     
-    # Substituição do comentário: atualiza os dados permitidos dinamicamente
-    for key, value in event_data.items():
-        if hasattr(event, key) and key not in ["id", "user_id", "created_at"]:
+    for key, value in event_data.model_dump(exclude_unset=True).items():
+        if hasattr(event, key) and key not in ["id", "user_id", "created_at", "likes"]:
             setattr(event, key, value)
             
     session.add(event)
@@ -104,15 +102,15 @@ def update_event(evento_id: int, event_data: dict, current_user: User = Depends(
 
 # Cancelar / Excluir Evento
 @router.delete("/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_event(evento_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def delete_event(evento_id: int, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado.")
         
-    # Validação de segurança para não deixar um cara que não é o dono excluir o evento
     if event.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este evento.")
         
+    # Deleção Direta
     session.delete(event)
     session.commit()
     return
@@ -122,60 +120,55 @@ def delete_event(evento_id: int, current_user: User = Depends(get_current_user),
 
 # Curtir Evento
 @router.post("/{evento_id}/curtir", status_code=status.HTTP_200_OK)
-def like_event(evento_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def like_event(evento_id: int, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado.")
         
-    # verifica se a curtida existe. Se sim, remove (Descurtir). Se não, adiciona.
-    # stmt = select(Likes).where(Likes.user_id == current_user.id, Likes.event_id == evento_id)
-    # curtida_existente = session.exec(stmt).first()
+    stmt = select(Likes).where(Likes.user_id == current_user.id, Likes.event_id == evento_id)
+    curtida_existente = session.exec(stmt).first()
     
-    # if curtida_existente:
-    #     session.delete(curtida_existente)
-    #     event.likes -= 1
-    #     mensagem = "Curtida removida."
-    # else:
-    #     nova_curtida = Likes(user_id=current_user.id, event_id=evento_id)
-    #     session.add(nova_curtida)
-    #     event.likes += 1
-    #     mensagem = "Evento curtido com sucesso."
+    if curtida_existente:
+        session.delete(curtida_existente)
+        event.likes -= 1
+        mensagem = "Curtida removida."
+    else:
+        nova_curtida = Likes(user_id=current_user.id, event_id=evento_id)
+        session.add(nova_curtida)
+        event.likes += 1
+        mensagem = "Evento curtido com sucesso."
         
-    # session.add(event)
-    # session.commit()
+    session.add(event)
+    session.commit()
     return {"mensagem": mensagem}
 
 # Demonstrar Interesse (Vagas)
 @router.post("/{evento_id}/interesse", status_code=status.HTTP_200_OK)
-def interest_event(evento_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def interest_event(evento_id: int, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:
         raise HTTPException(status_code=404, detail="Evento não encontrado.")
         
-    # controle de vagas e alternância de interesse
-    # stmt = select(Interests).where(Interests.user_id == current_user.id, Interests.event_id == evento_id)
-    # interesse_existente = session.exec(stmt).first()
+    stmt = select(Interests).where(Interests.user_id == current_user.id, Interests.event_id == evento_id)
+    interesse_existente = session.exec(stmt).first()
     
-    # if interesse_existente:
-    #     session.delete(interesse_existente)
-    #     session.commit()
-    #     return {"mensagem": "Interesse removido. Vaga liberada."}
+    if interesse_existente:
+        session.delete(interesse_existente)
+        session.commit()
+        return {"mensagem": "Interesse removido. Vaga liberada."}
         
-    # # Se não existe interesse, valida se há vagas disponíveis
-    # # stmt_contagem = select(Interests).where(Interests.event_id == evento_id)
-    # # total_interessados = len(session.exec(stmt_contagem).all())
-    # # if total_interessados >= event.limite_pessoas:
-    # #     raise HTTPException(status_code=400, detail="Não há vagas disponíveis para este evento.")
-        
-    # novo_interesse = Interests(user_id=current_user.id, event_id=evento_id)
-    # session.add(novo_interesse)
-    # session.commit()
+    # Como 'limite_pessoas' não foi implementado ainda, registrei o interesse diretamente
+    novo_interesse = Interests(user_id=current_user.id, event_id=evento_id)
+    session.add(novo_interesse)
+    session.commit()
     return {"mensagem": "Interesse registrado com sucesso!"}
 
 # Comentar em um Evento
 @router.post("/{evento_id}/comentarios", status_code=status.HTTP_201_CREATED)
-def add_comment(evento_id: int, comment_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    # new_comment = Comment(texto=comment_data['texto'], user_id=current_user.id, event_id=evento_id)
+def add_comment(evento_id: int, comment_data: CommentCreateSchema, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
+    new_comment = Comment(content=comment_data.content, user_id=current_user.id, event_id=evento_id)
+    session.add(new_comment)
+    session.commit()
     return {"mensagem": "Comentário adicionado."}
 
 
@@ -186,32 +179,32 @@ def add_comment(evento_id: int, comment_data: dict, current_user: User = Depends
 async def upload_event_photo(
     evento_id: int, 
     file: UploadFile = File(...), 
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_actual_user),
     session: Session = Depends(get_session)
 ):
-    # event = session.get(Event, evento_id)
-    # if event.user_id != current_user.id:
-    #    raise HTTPException(status_code=403, detail="Apenas o organizador pode adicionar fotos.")
+    event = session.get(Event, evento_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento não encontrado.")
+    if event.user_id != current_user.id:
+       raise HTTPException(status_code=403, detail="Apenas o organizador pode adicionar fotos.")
 
-    upload_dir = f"uploads/eventos/{evento_id}"
+    upload_dir = "app/static/defaults"
     os.makedirs(upload_dir, exist_ok=True)
     
-    file_path = f"{upload_dir}/{file.filename}"
+    file_name = f"event_{evento_id}_{file.filename}"
+    file_path = f"{upload_dir}/{file_name}"
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    foto_url = f"https://api.eventusp.com/{file_path}"
+    db_path = f"static/defaults/{file_name}"
     
-    # Lógica: Salvar a `foto_url` na nova tabela `event_picture` vinculada ao evento_id
+    # Atualiza a coluna banner (como a tabela event_picture ainda não existe no models.py)
+    event.banner = db_path
+    session.add(event)
+    session.commit()
     
-    return {"mensagem": "Foto adicionada com sucesso.", "url": foto_url}
-
-# Listar Fotos do Evento
-@router.get("/{evento_id}/fotos", status_code=status.HTTP_200_OK)
-def list_event_photos(evento_id: int, session: Session = Depends(get_session)):
-    # Lógica: buscar todas as URLs da tabela `event_picture` onde event_id == evento_id
-    return [{"id_foto": 1, "url": "https://api.eventusp.com/uploads/eventos/exemplo.jpg"}]
+    return {"mensagem": "Foto do evento (banner) adicionada com sucesso.", "url": db_path}
 ### ATENÇÃO LEO! QUANDO FOR MECHER AQUI SIGA O MEDELO QUE ESTÁ NO AUTH.PY PARA PADRONIZAR O PROJETO
 ### SEGUIR O MODELO, ESTOU QUERENDO DIZER PARA CRIAR TIPOS PARA OS ARGUMENTOS DE CADA FUNÇÃO E CRIAR TIPOS PARA OS RETURNS(SE QUISER SABER O PQ MANDA UM SALVE NO ZAP)
 #### OS TIPOS ESTÃO NO ARQUIVO SCHEMA.PY, USAR ROUTER TAMBÉM DEPOS QUE TERMINAR A ROTA ADD ELA NA MAIN Q NEM EU FIZ, O RETORNA DA FUÇÃO CASO DE ERRO USE O HTTMeXEPECTION IGUAL NO AUTH.PY

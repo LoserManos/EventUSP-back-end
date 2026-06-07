@@ -26,7 +26,7 @@ def update_profile(user_data: UserUpdateSchema, current_user: User = Depends(get
     # Atualiza apenas os campos enviados no JSON
     for key, value in user_data.items():
         # Não deixa o usuário alterar ID, email ou senha por aqui. Vou deixar emaill e senha pra ser auterado na autentificação tb
-        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email, role"]:
+        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email", "role"]:
             setattr(current_user, key, value)
             
     session.add(current_user)

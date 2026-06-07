@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class LoginRequest(BaseModel):
     name: str
@@ -13,7 +13,7 @@ class SingupRequest(BaseModel):
     bio: Optional[str]
 class SingupResponse(BaseModel):
     id: int
-    nome: str
+    name: str
     email: EmailStr
     bio: Optional[str]
     created_at: datetime
@@ -24,3 +24,63 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     id_user: int
+
+class UserResponseSchema(BaseModel):
+    """Molde de saída: O que é devolvido quando se pede o perfil de um utilizador."""
+    id: int
+    name: str
+    email: EmailStr
+    bio: Optional[str] = None
+    role: str
+    picture_profile: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class UserUpdateSchema(BaseModel):
+    """Molde de entrada: O que o utilizador pode enviar para editar o próprio perfil."""
+    name: Optional[str] = None
+    bio: Optional[str] = None
+    # Não inclui 'email' ou 'password' aqui por segurança (são tratados na autenticação).
+
+class EventCreateSchema(BaseModel):
+    """Molde de entrada: Dados estritamente necessários para criar um evento."""
+    title: str
+    start_date: datetime
+    duration: int
+    local: str
+    category_id: int
+    organization_id: Optional[int] = None
+
+class EventUpdateSchema(BaseModel):
+    """Molde de entrada: Todos os campos são opcionais para permitir edições parciais."""
+    title: Optional[str] = None
+    start_date: Optional[datetime] = None
+    duration: Optional[int] = None
+    local: Optional[str] = None
+    category_id: Optional[int] = None
+    organization_id: Optional[int] = None
+
+class EventResponseSchema(BaseModel):
+    """Molde de saída: Como o evento será devolvido na listagem (Feed) e detalhes."""
+    id: int
+    title: str
+    start_date: datetime
+    duration: int
+    local: str
+    likes: int
+    category_id: int
+    user_id: int
+    organization_id: Optional[int] = None
+    banner: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class CommentCreateSchema(BaseModel):
+    """Molde de entrada: Dados para criar um novo comentário."""
+    content: str
+
+class PaginatedEventResponse(BaseModel):
+    pagina_atual: int
+    total_eventos: Optional[int] = None
+    dados: List[EventResponseSchema]

@@ -5,7 +5,7 @@ import os
 import shutil
 
 from app.database import get_session
-from app.schemas import EventCreateSchema, EventUpdateSchema, EventResponseSchema, CommentCreateSchema
+from app.schemas import EventCreateSchema, EventUpdateSchema, EventResponseSchema, CommentCreateSchema, PaginatedEventResponse
 from app.models import Event, User, Likes, Interests, Follower, Comment
 from app.security import get_actual_user
 
@@ -28,12 +28,12 @@ def create_event(event_data: EventCreateSchema, current_user: User = Depends(get
     return {"mensagem": "Evento criado com sucesso!", "evento_id": new_event.id}
 
 # Listar Eventos (Feed Geral)
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK, response_model=PaginatedEventResponse)
 def list_events(
     pagina: int = Query(1, ge=1), 
     limite: int = Query(20, ge=1, le=100),
     busca: Optional[str] = None,
-    category_id: Optional[str] = None,
+    category_id: Optional[int] = None,
     session: Session = Depends(get_session)
 ):
     offset = (pagina - 1) * limite
@@ -73,7 +73,7 @@ def list_following_events(
 ### --- 2. DETALHES, EDIÇÃO E DELEÇÃO --- ###
 
 # Ver Detalhes do Evento
-@router.get("/{evento_id}", status_code=status.HTTP_200_OK)
+@router.get("/{evento_id}", status_code=status.HTTP_200_OK, response_model=EventResponseSchema)
 def get_event_details(evento_id: int, session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:
@@ -82,7 +82,7 @@ def get_event_details(evento_id: int, session: Session = Depends(get_session)):
     return event
 
 # Editar Evento
-@router.patch("/{evento_id}", status_code=status.HTTP_200_OK)
+@router.patch("/{evento_id}", status_code=status.HTTP_200_OK, response_model=EventResponseSchema)
 def update_event(evento_id: int, event_data: EventUpdateSchema, current_user: User = Depends(get_actual_user), session: Session = Depends(get_session)):
     event = session.get(Event, evento_id)
     if not event:

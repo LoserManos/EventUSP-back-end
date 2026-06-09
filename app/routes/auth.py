@@ -14,7 +14,7 @@ def login(login_data: LoginRequest,session = Depends(get_session)):
     user = session.exec(query).first()
     if not user or not verify_password(login_data.password,user.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="E-mail ou senha incorretos")
-    token = create_access_token({"sub":user.id})
+    token = create_access_token({"sub":str(user.id)})
     return {"access_token":token,"token_type":"bearer","id_user":user.id}
  
 @router.post("/auth/singup",status_code=status.HTTP_201_CREATED,response_model=SingupResponse)

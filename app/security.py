@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 from app.database import get_session
 from app.models import User
+from datetime import datetime, timedelta, timezone
 # Configurações do Token --- ISSO DA QUI TUDO VAI PARA O .ENV MAIS PRA FRENTE, A secret key vai ser alterada também
 SECRET_KEY = os.getenv("SECRET_KEY", "CHAVE SUPER SECRETAAAAA")
 ALGORITHM = "HS256"
@@ -65,7 +66,7 @@ def create_access_token(data: dict) -> str:
         str: O token JWT codificado e assinado, pronto para ser enviado ao Client.
     """
     data_coded = data.copy()
-    time_expiration = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    time_expiration = datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     data_coded.update({"exp": time_expiration})
     return jwt.encode(data_coded, SECRET_KEY, algorithm=ALGORITHM)
 # =====================================================================
@@ -98,6 +99,7 @@ def get_actual_user(token: str = Depends(oauth2_scheme), session: Session = Depe
         if user_id is None:   # Se o token for válido mas não tiver o ID lá dentro, barra o acesso
             raise exception_auth
     except jwt.PyJWTError:
+        print("parou aqiii")
         raise exception_auth
     user = session.get(User, user_id) # Busca o usuário dono do token no banco de dados usando o ID extraído
     if user is None: # Se o ID no token for válido, mas o usuário foi deletado do banco, barra o acesso

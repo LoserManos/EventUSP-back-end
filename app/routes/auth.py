@@ -12,17 +12,21 @@ router = APIRouter(tags=["Autenticação"])
 def login(login_data: LoginRequest,session = Depends(get_session)):
     query = select(User).where(login_data.email==login_data.email)
     user = session.exec(query).first()
-    if not user or verify_password(login_data.password,user.password):
+    if not user or not verify_password(login_data.password,user.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="E-mail ou senha incorretos")
-    token = create_access_token({"sub":user.id})
-    return {"acces_token":token,"detail":"bearer","id":user.id}
+    token = create_access_token({"sub":str(user.id)})
+    return {"access_token":token,"token_type":"bearer","id_user":user.id}
  
 @router.post("/auth/singup",status_code=status.HTTP_201_CREATED,response_model=SingupResponse)
 def singup(singup_data:SingupRequest,session = Depends(get_session)):
-    query = select(User).where(singup_data.email==singup_data.email)
+    query = select(User).where(User.email==singup_data.email)
     user = session.exec(query).first()
     if user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Este e-mail já está cadastrado no sistema.")
+    query= select(User).where(User.name == singup_data.name)
+    user = session.exec(query).first()
+    if user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Este nome de usuário já está cadastrado no sistema.")    
     criptd_passord = generate_hash_password(singup_data.password)
     new_user = User(name=singup_data.name,email=singup_data.email,password = criptd_passord,bio = singup_data.bio)
     session.add(new_user)

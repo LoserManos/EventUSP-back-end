@@ -19,6 +19,8 @@ def login(login_data: LoginRequest,session = Depends(get_session)):
  
 @router.post("/auth/singup",status_code=status.HTTP_201_CREATED,response_model=SingupResponse)
 def singup(singup_data:SingupRequest,session = Depends(get_session)):
+    if(len(singup_data.name)==0):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="campo nome não pode ficar vazio")
     query = select(User).where(User.email==singup_data.email)
     user = session.exec(query).first()
     if user:

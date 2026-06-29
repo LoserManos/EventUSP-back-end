@@ -1,6 +1,7 @@
 // src/components/OrgCard.tsx
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import { Organization } from '@/types/social';
 import { colors } from '@/styles/global';
 
@@ -8,7 +9,10 @@ const OrgImage = require('@/assets/images/EcaJr.png')
 
 export function OrgCard({ org, onPress }: { org: Organization; onPress?: () => void }) {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable 
+      style={styles.card} 
+      onPress={() => router.push('/social/org/${org.id}')}
+    >
       <Image source={OrgImage} style={styles.avatar} />
       <View style={styles.info}>
         <Text style={styles.name}>{org.name}</Text>

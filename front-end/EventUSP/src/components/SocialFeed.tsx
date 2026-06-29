@@ -5,7 +5,7 @@ import { colors } from '@/styles/global';
 
 interface SocialFeedProps {
   data: any[];
-  renderItem: ({ item }: { item: any }) => React.ReactElement;
+  renderItem: ({ item }: { item: any }) => React.ReactElement | null;
   onEndReached: () => void;
   loading?: boolean;
 }

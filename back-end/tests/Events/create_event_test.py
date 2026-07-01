@@ -9,7 +9,7 @@ def test_criar_evento_com_sucesso(client, db_session: Session):
         "password": "senha",
         "bio": "Testando rotas de eventos"
     }
-    client.post("/auth/singup", json=user_body)
+    client.post("/auth/signup", json=user_body)
     login_response = client.post("/auth/login", json=user_body)
     token = login_response.json()["access_token"]
 
@@ -82,7 +82,7 @@ def test_criar_evento_dados_incompletos(client):
     """Garante que a API bloqueia a criação se faltarem campos obrigatórios (ex: título e local)."""
     
     user_body = {"name": "Pica-Pau", "email": "picapau@teste.com", "password": "senha"}
-    client.post("/auth/singup", json=user_body)
+    client.post("/auth/signup", json=user_body)
     login_response = client.post("/auth/login", json=user_body)
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -110,7 +110,7 @@ def test_criar_evento_duracao_negativa(client):
     """Garante que o Pydantic barra eventos com duração zero ou negativa."""
     
     user_body = {"name": "Xablau", "email": "xablau@teste.com", "password": "senha"}
-    client.post("/auth/singup", json=user_body)
+    client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -131,7 +131,7 @@ def test_criar_evento_data_passada(client):
     """Garante que o Pydantic barra a criação de eventos que já aconteceram."""
     
     user_body = {"name": "Viajante_do_tempo", "email": "tempo@teste.com", "password": "senha"}
-    client.post("/auth/singup", json=user_body)
+    client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 

@@ -6,12 +6,12 @@ class LoginRequest(BaseModel):
     name: str
     email: EmailStr
     password: str
-class SingupRequest(BaseModel):
+class SignupRequest(BaseModel):
     name: str
     email: EmailStr
     password: str
     bio: Optional[str] = None
-class SingupResponse(BaseModel):
+class SignupResponse(BaseModel):
     id: int
     name: str
     email: EmailStr

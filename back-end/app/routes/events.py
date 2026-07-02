@@ -44,13 +44,13 @@ def list_events(
     
     if busca:
         query = query.where(Event.title.contains(busca))
-    elif category_id:
+    if category_id:
         query = query.where(Event.category_id == category_id)
-    elif most_recent:
+    if most_recent:
         query.order_by(desc(Event.created_at))
-    elif most_likes:
+    if most_likes:
         query.order_by(asc(Event.likes))
-    elif closest: ## por evento mais próximo(em módulo) da data atual
+    if closest: ## por evento mais próximo(em módulo) da data atual
         query.order_by(asc(abs(func.now()-Event.start_date)))
         
     total_eventos = len(session.exec(query).all())

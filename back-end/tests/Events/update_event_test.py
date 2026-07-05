@@ -5,7 +5,7 @@ from app.models import Event
 def test_editar_evento_com_sucesso(client):
     """Garante que o dono do evento consegue alterar os dados permitidos."""
     
-    user_body = {"name": "Dono do Evento", "email": "dono@teste.com", "password": "123"}
+    user_body = {"name": "Dono do Evento", "nickname":"gta","email": "dono@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -38,7 +38,7 @@ def test_editar_evento_com_sucesso(client):
 def test_editar_evento_de_outro_usuario(client):
     """Garante que a API bloqueia a edição (Erro 403) se o evento for de outra pessoa."""
     
-    vitima_body = {"name": "Bom de Guerra", "email": "kratos@teste.com", "password": "123"}
+    vitima_body = {"name": "Bom de Guerra","nickname":"gta", "email": "kratos@teste.com", "password": "123"}
     client.post("/auth/signup", json=vitima_body)
     token_vitima = client.post("/auth/login", json=vitima_body).json()["access_token"]
     
@@ -53,7 +53,7 @@ def test_editar_evento_de_outro_usuario(client):
     evento_id = resp_criacao.json()["evento_id"]
 
     # Usuário B (Invasor) faz login
-    invasor_body = {"name": "Invasor", "email": "invasor@teste.com", "password": "123"}
+    invasor_body = {"name": "Invasor","nickname":"gtaaaa", "email": "invasor@teste.com", "password": "123"}
     client.post("/auth/signup", json=invasor_body)
     token_invasor = client.post("/auth/login", json=invasor_body).json()["access_token"]
     headers_invasor = {"Authorization": f"Bearer {token_invasor}"}
@@ -69,7 +69,7 @@ def test_editar_evento_de_outro_usuario(client):
 def test_editar_evento_inexistente(client):
     """Garante que tentar editar um evento que não existe retorna Erro 404."""
     
-    user_body = {"name": "Testador Patch", "email": "patch@teste.com", "password": "123"}
+    user_body = {"name": "Testador Patch","nickname":"gta", "email": "patch@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     
@@ -79,7 +79,7 @@ def test_editar_evento_inexistente(client):
 def test_editar_evento_tentando_injetar_likes(client):
     """Garante que o dono não consegue fraudar o número de curtidas via PATCH."""
     
-    user_body = {"name": "Trapaceiro", "email": "trapaca@teste.com", "password": "123"}
+    user_body = {"name": "Trapaceiro","nickname":"gta", "email": "trapaca@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -108,7 +108,7 @@ def test_editar_evento_tentando_injetar_likes(client):
 def test_editar_evento_com_strings_vazias(client):
     """Garante que a API bloqueia alteração de título ou local para strings só de espaços."""
     
-    user_body = {"name": "Editor Espaço", "email": "espaco@teste.com", "password": "123"}
+    user_body = {"name": "Editor Espaço","nickname":"gta", "email": "espaco@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -127,7 +127,7 @@ def test_editar_evento_com_strings_vazias(client):
 def test_editar_evento_duracao_negativa(client):
     """Garante que a API bloqueia alteração de duração para valores menores ou iguais a zero."""
     
-    user_body = {"name": "Editor Tempo", "email": "tempo_edit@teste.com", "password": "123"}
+    user_body = {"name": "Editor Tempo","nickname":"gta", "email": "tempo_edit@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -145,7 +145,7 @@ def test_editar_evento_duracao_negativa(client):
 def test_editar_evento_data_passada(client):
     """Garante que a API bloqueia alteração de data para uma data que já passou."""
     
-    user_body = {"name": "Editor Passado", "email": "passado@teste.com", "password": "123"}
+    user_body = {"name": "Editor Passado","nickname":"gta", "email": "passado@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

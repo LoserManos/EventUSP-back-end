@@ -44,14 +44,15 @@ def update_profile(user_data: UserUpdateSchema, current_user: User = Depends(get
     data_dic = user_data.model_dump(exclude_unset=True) ## transforma em dicionario
     for key, value in data_dic.items():
         # Não deixa o usuário alterar ID, email ou senha por aqui. Vou deixar emaill e senha pra ser auterado na autentificação tb
-        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email", "role"]:
+        if hasattr(current_user, key) and key not in ["id", "created_at", "password", "email", "role"]: ## n precisa disso pois o schma já tira esses campos 
             if key == "nickname":
                 query = select(User).where(User.nickname==key)
                 user = session.exec(query).first()
                 if user:
                     raise HTTPException(status_code=403,detail="Apelido de usuário já em uso!")
             setattr(current_user, key, value)
-            
+        else:
+            raise HTTPException(status_code=422,detail="Campo imutável ou desconehcido")     
     session.add(current_user)
     session.commit()
     session.refresh(current_user)

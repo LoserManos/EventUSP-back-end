@@ -6,6 +6,7 @@ def test_criar_evento_com_sucesso(client, db_session: Session):
     user_body = {
         "name": "Leo",
         "email": "leo@teste.com",
+        "nickname":"jaja",
         "password": "senha",
         "bio": "Testando rotas de eventos"
     }
@@ -81,7 +82,7 @@ def test_criar_evento_com_token_invalido(client):
 def test_criar_evento_dados_incompletos(client):
     """Garante que a API bloqueia a criação se faltarem campos obrigatórios (ex: título e local)."""
     
-    user_body = {"name": "Pica-Pau", "email": "picapau@teste.com", "password": "senha"}
+    user_body = {"name": "Pica-Pau","nickname":"maluco","email": "picapau@teste.com", "password": "senha"}
     client.post("/auth/signup", json=user_body)
     login_response = client.post("/auth/login", json=user_body)
     token = login_response.json()["access_token"]
@@ -109,7 +110,7 @@ def test_criar_evento_dados_incompletos(client):
 def test_criar_evento_duracao_negativa(client):
     """Garante que o Pydantic barra eventos com duração zero ou negativa."""
     
-    user_body = {"name": "Xablau", "email": "xablau@teste.com", "password": "senha"}
+    user_body = {"name": "Xablau","nickname":"gta", "email": "xablau@teste.com", "password": "senha"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -130,7 +131,7 @@ def test_criar_evento_duracao_negativa(client):
 def test_criar_evento_data_passada(client):
     """Garante que o Pydantic barra a criação de eventos que já aconteceram."""
     
-    user_body = {"name": "Viajante_do_tempo", "email": "tempo@teste.com", "password": "senha"}
+    user_body = {"name": "Viajante_do_tempo", "nickname":"gta","email": "tempo@teste.com", "password": "senha"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -152,7 +153,7 @@ def test_criar_evento_data_passada(client):
 def test_criar_evento_com_strings_vazias(client):
     """Garante que a API bloqueia a criação de eventos com título ou local só de espaços."""
     
-    user_body = {"name": "Goku", "email": "goku@teste.com", "password": "123"}
+    user_body = {"name": "Goku", "nickname":"gta","email": "goku@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

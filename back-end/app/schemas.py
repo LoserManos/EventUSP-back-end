@@ -56,6 +56,7 @@ class UserResponseSchema(BaseModel):
 
 class UserUpdateSchema(BaseModel):
     """Molde de entrada: O que o utilizador pode enviar para editar o próprio perfil."""
+    model_config = ConfigDict(extra='forbid') ## proibi extra campos
     name: Optional[str] = None
     nickname: Optional[str] = None
     bio: Optional[str] = None

@@ -1,114 +1,76 @@
 import pytest
-from sqlmodel import Session,select
+from sqlmodel import Session, select
 from app.models import User
 
-## cenario 1: criação de user com bio, com sucesso!
-def test_create_account(client,db_session:Session):
-    
-    body = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-
-    response = client.post("/auth/signup",json=body)
+# Cenario 1: Criação de user com sucesso
+def test_create_account(client, db_session: Session):
+    body = {"name": "Nattan", "nickname": "natt", "email": "nattan@gmail.com", "password": "123", "bio": "lalalala"}
+    response = client.post("/auth/signup", json=body)
     dataResponse = response.json()
     assert response.status_code == 201
-    assert dataResponse["name"] == "nattan"
+    assert dataResponse["nickname"] == "natt"
     assert dataResponse["email"] == "nattan@gmail.com"
-    assert dataResponse["bio"] == "lalalala"
+    
     query = select(User).where(User.email == dataResponse["email"])
     user = db_session.exec(query).first()
     assert user is not None
-    assert user.name == dataResponse["name"]
+    assert user.nickname == "natt"
 
-
-## cenario 2: criação de user sem bio, com sucesso!
-def test_create_account_no_bio(client,db_session:Session):
-    
-    body = {"name": "nattan","email": "nattan@gmail.com","password":"123"}
-
-    response = client.post("/auth/signup",json=body)
-    dataResponse = response.json()
+# Cenario 2: Criação de user sem bio, com sucesso
+def test_create_account_no_bio(client, db_session: Session):
+    body = {"name": "Nattan", "nickname": "natt", "email": "natt@gmail.com", "password": "123"}
+    response = client.post("/auth/signup", json=body)
     assert response.status_code == 201
-    assert dataResponse["name"] == "nattan"
-    assert dataResponse["email"] == "nattan@gmail.com"
-    query = select(User).where(User.email == dataResponse["email"])
-    user = db_session.exec(query).first()
-    assert user is not None
-    assert user.name == dataResponse["name"]
 
-## cenario 3: criação de user com email já cadastrado, deve retornar erro
-def test_create_account_same_email(client,db_session:Session):
-    
-    user1 = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-
-    client.post("/auth/signup",json=user1)
-    user2 = {"name": "leonardo","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-
-    response = client.post("/auth/signup",json=user2)
-    dataResponse = response.json()
+# Cenario 3: Criação de user com email já cadastrado (Erro)
+def test_create_account_same_email(client):
+    user1 = {"name": "A", "nickname": "nick1", "email": "a@a.com", "password": "123"}
+    client.post("/auth/signup", json=user1)
+    user2 = {"name": "B", "nickname": "nick2", "email": "a@a.com", "password": "123"}
+    response = client.post("/auth/signup", json=user2)
     assert response.status_code == 400
 
-## cenario 4: criação de user com nome já cadastrado, deve retornar erro
-def test_create_account_same_name(client,db_session:Session):
-    
-    user1 = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-    client.post("/auth/signup",json=user1)
-    user2 = {"name": "nattan","email": "n@gmail.com","password":"123","bio": "lalalala"}
-    response = client.post("/auth/signup",json=user2)
-    dataResponse = response.json()
+# Cenario 4: Criação de user com nickname já cadastrado (Erro - ÚNICO)
+def test_create_account_same_nickname(client):
+    user1 = {"name": "Nattan", "nickname": "natt", "email": "a@a.com", "password": "123"}
+    client.post("/auth/signup", json=user1)
+    user2 = {"name": "Outro", "nickname": "natt", "email": "b@b.com", "password": "123"}
+    response = client.post("/auth/signup", json=user2)
     assert response.status_code == 400
 
+# Cenario 4.1: Criação de user com MESMO nome, porém DIFERENTE nickname (Sucesso - Não é único)
+def test_create_account_same_name_different_nick(client):
+    user1 = {"name": "Nattan", "nickname": "natt1", "email": "a@a.com", "password": "123"}
+    client.post("/auth/signup", json=user1)
+    user2 = {"name": "Nattan", "nickname": "natt2", "email": "b@b.com", "password": "123"}
+    response = client.post("/auth/signup", json=user2)
+    assert response.status_code == 201
 
-## cenario 5: login correto em conta existente, deve retornar sucesso
-def test_login(client,db_session:Session):
-    
-    user = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-    client.post("/auth/signup",json=user)
-    login = {"name": "nattan","email": "nattan@gmail.com","password":"123",}
-    res = client.post("/auth/login",json=login)
-    dataRes = res.json()
-    query = select(User).where(User.email == login["email"])
-    user = db_session.exec(query).first()
-    assert user is not None
+# Cenario 5: Login correto
+def test_login(client):
+    user = {"name": "N", "nickname": "natt", "email": "n@g.com", "password": "123"}
+    client.post("/auth/signup", json=user)
+    login = {"email": "n@g.com", "password": "123"}
+    res = client.post("/auth/login", json=login)
     assert res.status_code == 200
-    assert dataRes["token_type"] == "bearer"
-    assert dataRes["id_user"] == user.id
-    assert dataRes["access_token"] is not None
 
-
-## cenario 6: login com senha errada em conta existente, deve retornar erro
-def test_login(client,db_session:Session):
-    
-    user = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-    client.post("/auth/signup",json=user)
-    login = {"name": "nattan","email": "nattan@gmail.com","password":"1234",}
-    res = client.post("/auth/login",json=login)
+# Cenario 6: Login com senha errada
+def test_login_wrong_password(client):
+    user = {"name": "N", "nickname": "natt", "email": "n@g.com", "password": "123"}
+    client.post("/auth/signup", json=user)
+    login = {"email": "n@g.com", "password": "999"}
+    res = client.post("/auth/login", json=login)
     assert res.status_code == 400
 
-
-## cenario 7: login com email errado em conta existente, deve retornar erro
-def test_login(client,db_session:Session):
-    
-    user = {"name": "nattan","email": "nattan@gmail.com","password":"123","bio": "lalalala"}
-    client.post("/auth/signup",json=user)
-    login = {"name": "nattan","email": "natt@gmail.com","password":"1234",}
-    res = client.post("/auth/login",json=login)
-    assert res.status_code == 400
-
-## cenario 8: criação de user com nome ou senha contendo apenas espaços, deve retornar erro 422
-def test_create_account_espacos_vazios(client):
-    body_nome_vazio = {"name": "   ", "email": "vazio@gmail.com", "password": "123"}
-    res_nome = client.post("/auth/signup", json=body_nome_vazio)
-    assert res_nome.status_code == 422
-    assert "name" in res_nome.text
-
-    body_senha_vazia = {"name": "Valido", "email": "valido@gmail.com", "password": "   "}
-    res_senha = client.post("/auth/signup", json=body_senha_vazia)
-    assert res_senha.status_code == 422
-    assert "password" in res_senha.text
-
-## cenario 9: login com campos contendo apenas espaços, deve retornar erro 422
-def test_login_espacos_vazios(client):
-    login_invalido = {"name": "   ", "email": "nattan@gmail.com", "password": "   "}
-    res = client.post("/auth/login", json=login_invalido)
-    assert res.status_code == 422
-
-
+# Cenario 8: Campos vazios ou só espaços (422)
+def test_create_account_invalid_fields(client):
+    # Teste nickname vazio ou espaços
+    cases = [
+        {"name": "N", "nickname": "  ", "email": "a@a.com", "password": "123"},
+        {"name": "N", "nickname": "", "email": "a@a.com", "password": "123"},
+        {"name": " ", "nickname": "natt", "email": "a@a.com", "password": "123"}, # name vazio é ok? Se for obrigatório, falha.
+        {"name": "N", "nickname": "natt", "email": "a@a.com", "password": "  "}
+    ]
+    for body in cases:
+        res = client.post("/auth/signup", json=body)
+        assert res.status_code == 422

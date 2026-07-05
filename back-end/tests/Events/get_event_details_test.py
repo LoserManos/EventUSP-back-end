@@ -5,7 +5,7 @@ from app.models import Event
 def test_ver_detalhes_do_evento_com_sucesso(client):
     """Garante que buscar um ID válido retorna todos os dados do evento."""
     
-    user_body = {"name": "Organizador IME", "email": "org@ime.usp.br", "password": "123"}
+    user_body = {"name": "Organizador IME","nickname":"gta", "email": "org@ime.usp.br", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

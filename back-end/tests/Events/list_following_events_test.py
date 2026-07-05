@@ -8,18 +8,18 @@ def test_listar_eventos_seguindo(client):
     # Criar 3 perfis diferentes
     
     # Perfil A: O Amigo (Vamos segui-lo)
-    amigo_body = {"name": "Amigo", "email": "amigo@teste.com", "password": "123"}
+    amigo_body = {"name": "Amigo","nickname":"gta", "email": "amigo@teste.com", "password": "123"}
     resp_amigo = client.post("/auth/signup", json=amigo_body)
     id_amigo = resp_amigo.json()["id"]
     token_amigo = client.post("/auth/login", json=amigo_body).json()["access_token"]
 
     # Perfil B: O Desconhecido (não vamos segui-lo)
-    desc_body = {"name": "Desconhecido", "email": "desc@teste.com", "password": "123"}
+    desc_body = {"name": "Desconhecido","nickname":"gtaaa", "email": "desc@teste.com", "password": "123"}
     client.post("/auth/signup", json=desc_body)
     token_desc = client.post("/auth/login", json=desc_body).json()["access_token"]
 
     # Nosso Perfil Logado
-    eu_body = {"name": "Eu", "email": "eu@teste.com", "password": "123"}
+    eu_body = {"name": "Eu", "nickname":"gtssasa","email": "eu@teste.com", "password": "123"}
     client.post("/auth/signup", json=eu_body)
     token_eu = client.post("/auth/login", json=eu_body).json()["access_token"]
     headers_eu = {"Authorization": f"Bearer {token_eu}"}
@@ -46,7 +46,7 @@ def test_listar_eventos_seguindo_vazio(client):
     """Garante que se eu não sigo ninguém, o feed é vazio."""
     
     # Criar e logar com um usuário isolado
-    lobo_body = {"name": "Lobo Solitario", "email": "lobo@teste.com", "password": "123"}
+    lobo_body = {"name": "Lobo Solitario", "nickname":"gta","email": "lobo@teste.com", "password": "123"}
     client.post("/auth/signup", json=lobo_body)
     token_lobo = client.post("/auth/login", json=lobo_body).json()["access_token"]
     
@@ -70,7 +70,7 @@ def test_listar_eventos_seguindo_sem_autenticacao(client):
 def test_listar_eventos_busca_parcial(client):
     """Garante que a busca funciona enviando apenas um pedaço do nome do evento."""
     
-    user_body = {"name": "Eu", "email": "eu@teste.com", "password": "123"}
+    user_body = {"name": "Eu","nickname":"gta", "email": "eu@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -91,7 +91,7 @@ def test_listar_eventos_busca_parcial(client):
 def test_listar_eventos_busca_combinada(client):
     """Garante que a combinação de busca de texto com categoria cruza os filtros (AND)."""
     
-    user_body = {"name": "Lucas Aura", "email": "aura@teste.com", "password": "123"}
+    user_body = {"name": "Lucas Aura", "nickname":"gta","email": "aura@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

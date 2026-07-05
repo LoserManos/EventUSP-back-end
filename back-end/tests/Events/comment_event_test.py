@@ -6,7 +6,7 @@ def test_comentar_com_espacos_vazios(client):
     """Garante que a API bloqueia comentários que contenham apenas espaços em branco."""
     
     # 1. Criar usuário, logar e criar um evento alvo
-    user_body = {"name": "Comentarista", "email": "comenta@teste.com", "password": "123"}
+    user_body = {"name": "Comentarista", "nickname":"jaja","email": "comenta@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

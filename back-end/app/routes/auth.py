@@ -19,7 +19,7 @@ def login(login_data: LoginRequest,session = Depends(get_session)):
  
 @router.post("/auth/signup",status_code=status.HTTP_201_CREATED,response_model=SignupResponse)
 def signup(signup_data:SignupRequest,session = Depends(get_session)):
-    if(len(signup_data.name)==0 or len(signup_data.nickname==0) or len(signup_data.password)==0 or len(signup_data.email)==0):
+    if(len(signup_data.name)==0 or len(signup_data.nickname) == 0 or len(signup_data.password)==0 or len(signup_data.email)==0):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Nenhum campo obrigatório pode ser vazio.")
     query = select(User).where(User.email==signup_data.email)
     user = session.exec(query).first()
@@ -30,7 +30,7 @@ def signup(signup_data:SignupRequest,session = Depends(get_session)):
     if user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Este nome de usuário já está cadastrado no sistema.")    
     criptd_passord = generate_hash_password(signup_data.password)
-    new_user = User(name=signup_data.name,email=signup_data.email,password = criptd_passord,bio = signup_data.bio)
+    new_user = User(name=signup_data.name,nickname=signup_data.nickname,email=signup_data.email,password = criptd_passord,bio = signup_data.bio)
     session.add(new_user)
     session.commit()
     session.refresh(new_user)

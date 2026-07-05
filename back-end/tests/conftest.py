@@ -33,12 +33,12 @@ def client(db_session):
 def token_valido(db_session):
     """Cria um usuário no banco em memória e gera um token para ele."""
     #  Cria o usuário fictício usando a db_session do teste
-    user = User(name="Test User", email="test@example.com", password="hash_da_senha")
+    user = User(name="Test User",nickname="natt",email="test@example.com", password="hash_da_senha")
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     # Gera o token
-    payload = {"sub": user.id} 
+    payload = {"sub": str(user.id)} 
     token = create_access_token(data=payload) 
     
     return token

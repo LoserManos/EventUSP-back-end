@@ -5,7 +5,7 @@ from app.models import Event
 def test_deletar_evento_com_sucesso(client):
     """Garante que o dono do evento consegue eliminá-lo e que ele desaparece do banco."""
     
-    user_body = {"name": "Organizador Desistente", "email": "cancelar@teste.com", "password": "123"}
+    user_body = {"name": "Organizador Desistente","nickname":"gta", "email": "cancelar@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -34,7 +34,7 @@ def test_deletar_evento_com_sucesso(client):
 def test_deletar_evento_de_outro_usuario(client):
     """Garante que um usuário não consegue apagar o evento de outra pessoa."""
     
-    dono_body = {"name": "Dono Legitimo", "email": "dono_real@teste.com", "password": "123"}
+    dono_body = {"name": "Dono Legitimo", "nickname":"gta","email": "dono_real@teste.com", "password": "123"}
     client.post("/auth/signup", json=dono_body)
     token_dono = client.post("/auth/login", json=dono_body).json()["access_token"]
     
@@ -48,7 +48,7 @@ def test_deletar_evento_de_outro_usuario(client):
     evento_id = client.post("/eventos/", json=evento_body, headers={"Authorization": f"Bearer {token_dono}"}).json()["evento_id"]
 
     # Invasor tenta fazer login
-    invasor_body = {"name": "Intruso", "email": "intruso@teste.com", "password": "123"}
+    invasor_body = {"name": "Intruso","nickname":"a", "email": "intruso@teste.com", "password": "123"}
     client.post("/auth/signup", json=invasor_body)
     token_invasor = client.post("/auth/login", json=invasor_body).json()["access_token"]
     headers_invasor = {"Authorization": f"Bearer {token_invasor}"}
@@ -64,7 +64,7 @@ def test_deletar_evento_de_outro_usuario(client):
 def test_deletar_evento_inexistente(client):
     """Garante que tentar apagar um evento que não existe retorna Erro 404."""
     
-    user_body = {"name": "Eliminador", "email": "delete_404@teste.com", "password": "123"}
+    user_body = {"name": "Eliminador", "nickname":"gta","email": "delete_404@teste.com", "password": "123"}
     client.post("/auth/signup", json=user_body)
     token = client.post("/auth/login", json=user_body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

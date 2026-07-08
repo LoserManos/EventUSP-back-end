@@ -6,7 +6,7 @@ import shutil
 
 from app.database import get_session
 from app.schemas import EventCreateSchema, EventUpdateSchema, EventResponseSchema, CommentCreateSchema, PaginatedEventResponse
-from app.models import Event, User, Likes, Interests, Follower, Comment
+from app.models import Event, User, Likes, Interests, Follower, Comment, Event_picture
 from app.security import get_actual_user
 
 router = APIRouter(
@@ -211,12 +211,12 @@ async def upload_event_photo(
         
     db_path = f"static/defaults/{file_name}"
     
-    # Atualiza a coluna banner (como a tabela event_picture ainda não existe no models.py)
-    event.banner = db_path
+    picture = Event_picture(event_id=event.id,url=db_path)
+    event.pictures.append(picture)
     session.add(event)
     session.commit()
     
-    return {"mensagem": "Foto do evento (banner) adicionada com sucesso.", "url": db_path}
+    return {"mensagem": "Foto adicionada no evento com sucesso.", "url": db_path}
 ### ATENÇÃO LEO! QUANDO FOR MECHER AQUI SIGA O MEDELO QUE ESTÁ NO AUTH.PY PARA PADRONIZAR O PROJETO
 ### SEGUIR O MODELO, ESTOU QUERENDO DIZER PARA CRIAR TIPOS PARA OS ARGUMENTOS DE CADA FUNÇÃO E CRIAR TIPOS PARA OS RETURNS(SE QUISER SABER O PQ MANDA UM SALVE NO ZAP)
 #### OS TIPOS ESTÃO NO ARQUIVO SCHEMA.PY, USAR ROUTER TAMBÉM DEPOS QUE TERMINAR A ROTA ADD ELA NA MAIN Q NEM EU FIZ, O RETORNA DA FUÇÃO CASO DE ERRO USE O HTTMeXEPECTION IGUAL NO AUTH.PY

@@ -93,7 +93,6 @@ class Event(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id") # chave estrangeira de quem criou o evento
     organization_id: Optional[int] = Field(default=None, foreign_key="organization.id", nullable=True)  # CHAVE ESTRANGEIRA: Organização dona (Opcional -> nullable=True)
     organization: Optional["Organization"] = Relationship(back_populates="events") # toda vez que criar um evento com organização id, a organização vai ficar aqui
-    banner: Optional[str] = Field(default="static/defaults/user.jpg") ## foto do banner
     title: str
     start_date: datetime
     duration: int  # em minutos

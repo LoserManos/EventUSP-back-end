@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,23 +23,25 @@ import { useRouter } from 'expo-router';
 import { colors } from '@/styles/global';
 
 // Importa o Hook de lógica
-import { useLogin } from '../../hooks/useLogin'; 
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  
+  const { signIn, loading } = useAuth(); 
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
 
-  // Toda a lógica e estados vêm prontos daqui:
-  const {
-    email,
-    setEmail,
-    password,
-    setPassword,
-    passwordVisible,
-    togglePasswordVisibility,
-    loading,
-    handleLogin,
-  } = useLogin();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const togglePasswordVisibility = () => setPasswordVisible((prev) => !prev);
 
+  async function handleLogin() {
+    try {
+      await signIn(email, senha);
+    } catch (error) {
+      Alert.alert('Erro', 'Credenciais inválidas');
+    }
+  }
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
@@ -101,8 +104,8 @@ export default function LoginScreen() {
               style={styles.input}
               placeholder="Senha"
               placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
+              value={senha}
+              onChangeText={setSenha}
               secureTextEntry={!passwordVisible}
             />
             <TouchableOpacity
@@ -120,7 +123,7 @@ export default function LoginScreen() {
           {/* Esqueceu a senha */}
           <TouchableOpacity
             style={styles.esqueceuSenhaWrapper}
-            onPress={() => router.push('/forgotScreen')}
+            onPress={() => router.push('/forgot')}
           >
             <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
           </TouchableOpacity>
@@ -149,7 +152,7 @@ export default function LoginScreen() {
           {/* Registrar */}
           <View style={styles.registrarWrapper}>
             <Text style={styles.registrarTexto}>Crie uma conta </Text>
-            <TouchableOpacity onPress={() => router.push('/registerScreen')}>
+            <TouchableOpacity onPress={() => router.push('/register')}>
               <Text style={styles.registrarLink}>Registrar</Text>
             </TouchableOpacity>
           </View>

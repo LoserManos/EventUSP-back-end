@@ -55,7 +55,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
           {/* Botão voltar */}
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.push('/loginScreen')}
+            onPress={() => router.push('/login')}
           >
             <Ionicons name="arrow-back" size={20} color={colors.textPrimaryDark} />
           </TouchableOpacity>

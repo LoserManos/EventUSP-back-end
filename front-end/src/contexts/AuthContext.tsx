@@ -1,70 +1,82 @@
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from '../types/user';
+import { userService } from '../services/userService';
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { authService } from '../services/authService'; // O serviço que criamos antes!
-
-// 1. O que vai estar disponível globalmente? (Tipagem)
 interface AuthContextData {
-  user: { nome: string; email: string } | null;
-  isAuthenticated: boolean;
-  signIn: (email: string, pass: string) => Promise<void>;
-  signOut: () => void;
+  isLogged: boolean;
+  userProfile: User | null;
   loading: boolean;
-  lightMode: boolean;
+  signIn: (token: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-// 2. Criando o Contexto (a estrutura vazia)
-const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-// 3. O Provider (O gerenciador dos estados)
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<{ nome: string; email: string } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [lightMode, setLightMode] = useState(false);
-  // Função global de Login
-  async function signIn(email: string, pass: string) {
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Ao abrir o app, verifica se já tem sessão salva no celular
+  useEffect(() => {
+    async function loadStorageData() {
+      await AsyncStorage.clear();
+      
+      try {
+        const storedToken = await AsyncStorage.getItem('userToken');
+        const storedUser = await AsyncStorage.getItem('userProfile');
+
+        if (storedToken && storedUser) {
+          setUserProfile(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do AsyncStorage', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStorageData();
+  }, []);
+
+  // Salva o token no celular e busca o perfil completo automaticamente
+  async function signIn(token: string) {
     try {
-      setLoading(true);
-      // Aqui usamos aquele serviço para bater na API
-      const response = await authService.login({ email, password: pass });
+      // 1. Salva a "pulseira" (token) no AsyncStorage (o HD do app)
+      await AsyncStorage.setItem('userToken', token);
       
-      // Salvamos o usuário no estado global!
-      setUser({ nome: response.nome, email: response.email });
+      // 2. Como o token já está salvo, o nosso interceptor (no api.ts) 
+      // já consegue pegar ele e mandar para o backend na próxima requisição!
+      // Então, pedimos para o backend: "me dê o perfil desse usuário"
+      const user = await userService.getMe();
       
-      // Em um app real, aqui você também salvaria o Token (ex: JWT) 
-      // usando AsyncStorage ou SecureStore para o usuário não precisar
-      // logar de novo ao fechar o app.
-      
+      // 3. Salvamos o perfil completo para usar nas telas
+      await AsyncStorage.setItem('userProfile', JSON.stringify(user));
+      setUserProfile(user);
     } catch (error) {
-      throw error; // Repassa o erro para a tela tratar (ex: mostrar Alert)
-    } finally {
-      setLoading(false);
+      console.error('Erro ao salvar token e buscar perfil', error);
+      throw error; // Repassa o erro para a tela de login
     }
   }
 
-  // Função global de Logout
-  function signOut() {
-    setUser(null);
-    // Aqui você também limparia o AsyncStorage
+  // Remove o token e o perfil do celular no logout
+  async function signOut() {
+    try {
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('userProfile');
+      setUserProfile(null);
+    } catch (error) {
+      console.error('Erro ao remover token', error);
+    }
   }
 
-  // O Provider "envelopa" os filhos (children) e distribui os 'values'
   return (
-    <AuthContext.Provider 
-      value={{ 
-        user, 
-        isAuthenticated: !!user, // !! converte para booleano (true se tiver user, false se null)
-        signIn, 
-        signOut, 
-        loading 
-      }}
-    >
+    <AuthContext.Provider value={{ isLogged: !!userProfile, userProfile, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// 4. Criando um Hook customizado para facilitar o acesso nas telas
+// Hook customizado para facilitar o acesso nas telas (alternativa ao useContext)
 export function useAuth() {
-  const context = useContext(AuthContext);
-  return context;
+  return useContext(AuthContext);
 }

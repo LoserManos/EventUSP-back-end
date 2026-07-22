@@ -11,25 +11,25 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 
 // Componente interno que decide para onde o usuário deve ir
 function MainLayout() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isLogged, loading } = useAuth();
   const segments = useSegments(); // Pega a pasta/rota atual que o usuário está
   const router = useRouter();
 
   useEffect(() => {
-    // Se ainda estiver carregando as informações de auth (ex: buscando token salvo), não faz nada
+    // 2. Se a aplicação ainda está verificando o token, não fazemos nada.
     if (loading) return;
 
-    // Verifica se o usuário está dentro do grupo de telas (auth)
-    const inAuthGroup = segments[0] === "(auth)";
+    // 'segments' diz em qual grupo de rotas estamos. ex: ["(auth)", "login"]
+    const inAuthGroup = segments[0] === '(auth)';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Se NÃO está logado e NÃO está nas telas de auth -> Manda pro Login
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && inAuthGroup) {
-      // Se JÁ ESTÁ logado e tentou abrir o Login/Registro -> Manda pras Tabs
-      router.replace("/(tabs)");
+    if (!isLogged && !inAuthGroup) {
+      // 3. Se não tem usuário logado e não está na tela de Auth, joga pro Login
+      router.replace('/(auth)/login');
+    } else if (isLogged && inAuthGroup) {
+      // 4. Se tem usuário logado e ele tenta abrir a tela de Login, joga pras Tabs
+      router.replace('/(tabs)');
     }
-  }, [isAuthenticated, loading, segments]);
+  }, [isLogged, loading, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

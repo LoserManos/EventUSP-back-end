@@ -22,26 +22,20 @@ import {
 import { useRouter } from 'expo-router';
 import { colors } from '@/styles/global';
 
-// Importa o Hook de lógica
-import { useAuth } from '../../contexts/AuthContext';
+import { useLogin } from '../../hooks/useLogin';
 
 export default function LoginScreen() {
   const router = useRouter();
-  
-  const { signIn, loading } = useAuth(); 
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const togglePasswordVisibility = () => setPasswordVisible((prev) => !prev);
-
-  async function handleLogin() {
-    try {
-      await signIn(email, senha);
-    } catch (error) {
-      Alert.alert('Erro', 'Credenciais inválidas');
-    }
-  }
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    passwordVisible,
+    togglePasswordVisibility,
+    loading,
+    handleLogin,
+  } = useLogin();
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
@@ -104,8 +98,8 @@ export default function LoginScreen() {
               style={styles.input}
               placeholder="Senha"
               placeholderTextColor={colors.textSecondary}
-              value={senha}
-              onChangeText={setSenha}
+              value={password}
+              onChangeText={setPassword}
               secureTextEntry={!passwordVisible}
             />
             <TouchableOpacity

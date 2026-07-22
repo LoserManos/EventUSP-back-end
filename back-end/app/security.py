@@ -112,7 +112,7 @@ def get_actual_user(token: str = Depends(oauth2_scheme), session: Session = Depe
 # =====================================================================
 # DEPENDÊNCIA DE CONEXÃO COM A API
 # =====================================================================
-def verify_api_key(res_api_key:str = Header(None)):
+def verify_api_key(apiKey:str = Header(None)):
     """
     Protege a API de requests não autoriados
 
@@ -125,6 +125,6 @@ def verify_api_key(res_api_key:str = Header(None)):
     Returns:
         api_key
     """
-    if not res_api_key or res_api_key!=API_KEY:
+    if not apiKey or apiKey!=API_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Acesso negado. API Key inválida ou ausente.")
-    return res_api_key
+    return apiKey

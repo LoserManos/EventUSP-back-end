@@ -20,17 +20,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ao abrir o app, verifica se já tem sessão salva no celular
   useEffect(() => {
     async function loadStorageData() {
-      await AsyncStorage.clear();
-      
       try {
         const storedToken = await AsyncStorage.getItem('userToken');
-        const storedUser = await AsyncStorage.getItem('userProfile');
 
-        if (storedToken && storedUser) {
-          setUserProfile(JSON.parse(storedUser));
+        if (storedToken) {
+          // Validação inicial do Token na API, como diz a regra UX
+          const user = await userService.getMe();
+          setUserProfile(user);
+          // Opcional: atualiza o perfil em disco
+          await AsyncStorage.setItem('userProfile', JSON.stringify(user));
         }
       } catch (error) {
-        console.error('Erro ao carregar dados do AsyncStorage', error);
+        console.error('Sessão expirada ou erro ao carregar do AsyncStorage', error);
+        // Em caso de erro (ex: 401), limpa o estado
+        setUserProfile(null);
+        await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('userProfile');
       } finally {
         setLoading(false);
       }

@@ -5,41 +5,101 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/styles/global';
 import { useRouter } from 'expo-router';
+import { useCreateEvent } from '../../hooks/useCreateEvent';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 export default function CreateEventScreen() {
   const router = useRouter();
-  
+
   // Estados para os campos do formulário
   const [title, setTitle] = useState('');
   const [local, setLocal] = useState('');
-  const [startDate, setStartDate] = useState('');
   const [duration, setDuration] = useState('');
   const [category, setCategory] = useState('');
-  const handleCreateEvent = () => {
-    // Por enquanto apenas exibe os dados (Estrutura UI)
-    if (!title || !local || !startDate || !duration || !category) {
+
+  // Estados do DateTimePicker
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<any>(Platform.OS === 'ios' ? 'datetime' : 'date');
+
+  const { createEvent, loading, error } = useCreateEvent();
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      if (event.type === 'set' && selectedDate) {
+        setDate(selectedDate);
+        if (pickerMode === 'date') {
+          // Após escolher a data no Android, abre o seletor de Hora
+          setPickerMode('time');
+        } else {
+          // Terminou de escolher a hora
+          setShowPicker(false);
+          setPickerMode('date'); // Reseta para a próxima vez
+        }
+      } else {
+        // Usuário cancelou
+        setShowPicker(false);
+        setPickerMode('date');
+      }
+    } else {
+      // iOS atualiza em tempo real
+      if (selectedDate) {
+        setDate(selectedDate);
+      }
+    }
+  };
+
+  const handleCreateEvent = async () => {
+    if (!title || !local || !duration || !category) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
-    console.log('Dados do evento:', { title, local, startDate, duration, category });
-    Alert.alert('Sucesso', 'Estrutura do evento criada! (Integração com API pendente)');
-  
-    // Limpa os campos
-    setTitle('');
-    setLocal('');
-    setStartDate('');
-    setDuration('');
-    setCategory('');
+
+    try {
+      const isoDateString = date.toISOString();
+
+      const eventoParaEnviar = {
+        title,
+        local,
+        start_date: isoDateString,
+        duration: Number(duration),
+        category_id: Number(category),
+      };
+
+      await createEvent(eventoParaEnviar);
+      
+      Alert.alert('Sucesso', 'Evento criado com sucesso!');
+      
+      setTitle('');
+      setLocal('');
+      setDate(new Date());
+      setDuration('');
+      setCategory('');
+      
+      router.push('/(tabs)');
+    } catch (err) {
+      console.log('Falha ao criar evento');
+    }
   };
+
+  const formatDisplayDate = (d: Date) => {
+    return d.toLocaleString('pt-BR', { 
+      day: '2-digit', month: '2-digit', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -57,6 +117,7 @@ export default function CreateEventScreen() {
               Preencha os dados abaixo para divulgar seu novo evento.
             </Text>
           </View>
+          
           {/* Nome do Evento */}
           <Text style={styles.label}>Nome do Evento</Text>
           <View style={styles.inputWrapper}>
@@ -69,7 +130,8 @@ export default function CreateEventScreen() {
               onChangeText={setTitle}
             />
           </View>
-              {/* Local */}
+
+          {/* Local */}
           <Text style={styles.label}>Local</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="location-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
@@ -81,18 +143,34 @@ export default function CreateEventScreen() {
               onChangeText={setLocal}
             />
           </View>
-          {/* Data e Hora (Estrutura provisória) */}
+
+          {/* Data e Hora (Botão Picker Nativo) */}
           <Text style={styles.label}>Data e Hora</Text>
-          <View style={styles.inputWrapper}>
+          <TouchableOpacity 
+            style={styles.inputWrapper} 
+            onPress={() => {
+              setPickerMode(Platform.OS === 'ios' ? 'datetime' : 'date');
+              setShowPicker(true);
+            }}
+            activeOpacity={0.7}
+          >
             <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: 2024-10-30 18:00"
-              placeholderTextColor={colors.textSecondary}
-              value={startDate}
-              onChangeText={setStartDate}
+            <Text style={styles.input}>
+              {formatDisplayDate(date)}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Renderização do Calendário */}
+          {showPicker && (
+            <DateTimePicker
+              value={date}
+              mode={pickerMode}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+              textColor={colors.textPrimaryDark}
             />
-          </View>
+          )}
+
           {/* Duração */}
           <Text style={styles.label}>Duração (em minutos)</Text>
           <View style={styles.inputWrapper}>
@@ -120,11 +198,16 @@ export default function CreateEventScreen() {
               keyboardType="numeric"
             />
           </View>
+
+          {/* Mensagem de Erro (se houver) */}
+          {error && <Text style={styles.errorText}>{error}</Text>}
+
           {/* Botão de Criar */}
           <TouchableOpacity
             style={styles.createButton}
             onPress={handleCreateEvent}
             activeOpacity={0.85}
+            disabled={loading}
           >
             <LinearGradient
               colors={[colors.orangePrimary, colors.orangePrimary]}
@@ -132,7 +215,11 @@ export default function CreateEventScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.gradient}
             >
-              <Text style={styles.createButtonText}>Publicar Evento</Text>
+              {loading ? (
+                <ActivityIndicator color={colors.backgroundDark} />
+              ) : (
+                <Text style={styles.createButtonText}>Publicar Evento</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
@@ -142,6 +229,13 @@ export default function CreateEventScreen() {
 }
 
 const styles = StyleSheet.create({
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.backgroundDark,
